@@ -64,13 +64,16 @@ Set OpenTrack's **Input** to `Neuralnet tracker`. It tracks your face from a pla
 
 ### Phone App Setup
 
-A phone app works here if it sends the OpenTrack UDP protocol, either itself or through a PC-side companion. Plenty of phone trackers speak something else, so check your app against that before anything else.
+Your app has to send the OpenTrack UDP protocol, either from the phone or through a companion program on the PC. Many phone trackers use something else, so check that first.
 
-What decides the wiring is how much filtering the app does before the packet leaves the phone. An app that filters on-device can point straight at your PC's LAN IP on port `4242`. A raw or lightly filtered feed sent direct will jitter, because the mod's smoothing is sized to take the edge off a clean signal rather than to rescue a noisy one, and that app should go through OpenTrack instead so its filters and curves can clean the feed up first. Route it through OpenTrack too if you want OpenTrack's curve mapping either way. The test is quick: send direct, hold your head still, and if the view drifts or shakes, put OpenTrack in the middle.
+There are two ways to wire it up:
 
-I made [Headcam](https://headcam.app) so decent tracking was free for anybody with a phone already in their pocket. It filters on-device, so it can send direct. Any app that filters enough noise works the same way.
+- **Straight to the game.** Point the app at your PC's local IP address, port `4242`.
+- **Through OpenTrack.** Set OpenTrack's **Input** to your app, then follow [Setting Up OpenTrack](#setting-up-opentrack).
 
-A tracker sending from anywhere other than loopback counts as a remote connection, including a tracker on this same PC that you have pointed at the machine's own LAN address rather than `127.0.0.1`. The mod sees a transport, not a machine, so that case gets `RemoteSmoothing` (0.15) rather than `LocalSmoothing` (0.0). Send to `127.0.0.1` if you want the local value.
+Try it straight to the game first. Hold your head still and watch: if the view shakes or creeps, your app is sending a rough feed, and putting OpenTrack in the middle will clean it up. Use OpenTrack anyway if you want its curves.
+
+I made [Headcam](https://headcam.app) so decent tracking was free for anybody with a phone already in their pocket. It smooths on the phone, so it goes straight to the game.
 
 ## Controls
 
@@ -139,6 +142,8 @@ LimitY=0.20
 LimitZ=0.40
 LimitZBack=0.10
 ```
+
+The mod picks between the two smoothing values by where the packets came from, and it goes by address rather than by machine. Only `127.0.0.1` counts as local. A phone on your WiFi gets `RemoteSmoothing`, which is what you want, but so does OpenTrack running on this same PC if you have pointed it at your PC's own network address. Send to `127.0.0.1` to get `LocalSmoothing`.
 
 ## Troubleshooting
 
