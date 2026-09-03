@@ -1,0 +1,61 @@
+# AI tooling and local notes
+.claude/
+.lab/
+skills/
+.skills/
+AGENTS.md
+CLAUDE.md
+CLAUDE.local.md
+mcp.json
+.mcp.json
+
+# Store page copy, pasted into Nexus by hand
+NEXUS_MODS.md
+
+# Tooling
+.pixi/
+.vs/
+.vscode/
+.idea/
+CMakeUserPresets.json
+
+# Build output
+build/
+build-tests/
+out/
+bin/
+obj/
+libs/
+dist/
+release/
+scratch/
+*.user
+*.suo
+*.aps
+*.ilk
+*.pdb
+
+# Per-game install state
+.headtracking-state.json
+
+__pycache__/
+*.pyc
+
+# Explorer drops these into any folder it renders thumbnails for
+Thumbs.db
+desktop.ini
+
+# Reverse-engineering output. A Ghidra project holds the imported program's
+# bytes, so a repo-local one would put the shipping game EXE into git history.
+*.gpr
+*.rep/
+*.gzf
+ghidra-projects/
+*.exe
+
+# Vendored loader payloads are the install-time source of truth
+!vendor/**
+# ...but the negation above re-admits everything under vendor/, including the
+# *.exe rule that exists to keep a shipping game binary out of history. That
+# guard is not waived anywhere, vendor included. No loader we vendor is an EXE.
+vendor/**/*.exe
