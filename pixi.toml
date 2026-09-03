@@ -1,6 +1,6 @@
 [workspace]
 name = "wreckfest-headtracking"
-version = "0.0.0"
+version = "0.1.0"
 description = "Head tracking mod for Wreckfest (Bugbear's in-house engine)"
 license = "MIT"
 license-file = "LICENSE"
