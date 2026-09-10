@@ -12,6 +12,7 @@ namespace wf_ht::builds {
 
 const BuildProfile* const kKnownProfiles[] = {
     &kSteamProfile_20230919,
+    &kGdkProfile_20210223,
 };
 const std::size_t kKnownProfileCount = sizeof(kKnownProfiles) / sizeof(kKnownProfiles[0]);
 
@@ -24,6 +25,11 @@ const BuildProfile& ActiveProfile() { return *g_active; }
 // kKnownProfiles is ordered newest first. This is the whole of what a user sees
 // when their build is unrecognised, so it has to name the direction rather than
 // just refusing.
+//
+// The registry spans stores, and the stores ship different builds: the Game
+// Pass package is a 2021 build where Steam's is a 2023 one. So "older than the
+// newest known" does not mean the game is out of date, and the older branch
+// must not tell a Game Pass player to go and update.
 static void LogUnknownBuild(const PeFingerprint& running) {
     const BuildProfile& primary = *kKnownProfiles[0];
     switch (cameraunlock::memory::ClassifyMismatch(running, primary.Fingerprint)) {
@@ -32,8 +38,9 @@ static void LogUnknownBuild(const PeFingerprint& running) {
                   "(newest known: %s). Check the mod's releases page for an update.", primary.Name);
         break;
     case FingerprintMismatch::Older:
-        Log::Line("[build] this game build is OLDER than any build this mod knows about "
-                  "(newest known: %s). Let Steam finish updating the game.", primary.Name);
+        Log::Line("[build] this game build is not one this mod knows about, and is older than "
+                  "the newest it does (%s). If a store update is part-way through, let it "
+                  "finish; otherwise check the mod's releases page for an update.", primary.Name);
         break;
     case FingerprintMismatch::Differs:
         Log::Line("[build] this EXE has a known build timestamp but a different size/checksum "

@@ -13,6 +13,7 @@ namespace wf_ht::builds {
 // that the "unknown build" log line compares against to say whether the
 // running EXE is newer or older than anything this mod knows about.
 extern const BuildProfile kSteamProfile_20230919;
+extern const BuildProfile kGdkProfile_20210223;
 
 extern const BuildProfile* const kKnownProfiles[];
 extern const std::size_t kKnownProfileCount;

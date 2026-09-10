@@ -38,16 +38,19 @@ update-deps = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/update-d
 
 package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["build"] }
 
-# Dev loop: build, then copy the .asi + vendored loader straight into the
-# detected game folder. install.cmd is the end-user path and is not run here -
-# it pauses when it isn't given /y, and pixi allocates no stdin to read from.
+# Dev loop: build, then copy the .asi + vendored loader straight into EVERY
+# detected game folder - the Steam and Game Pass copies are different builds
+# and both need the new binary. install.cmd is the end-user path and is not run
+# here - it pauses when it isn't given /y, and pixi allocates no stdin to read
+# from.
 install = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1", depends-on = ["build"] }
 
-uninstall = "scripts/uninstall.cmd /y"
+# Loops uninstall.cmd over every detected install for the same reason.
+uninstall = "powershell -ExecutionPolicy Bypass -File scripts/uninstall-all.ps1 /y"
 
 release = "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"
 
-# Compare the installed Wreckfest_x64.exe PE fingerprint against every build
+# Compare every installed Wreckfest_x64.exe PE fingerprint against every build
 # profile in src/builds/. First thing to run when a user reports the dormant
 # "unknown build" log line.
 check-fingerprint = "powershell -ExecutionPolicy Bypass -File scripts/check-fingerprint.ps1"

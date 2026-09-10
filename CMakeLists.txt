@@ -47,6 +47,7 @@ set(MOD_SOURCES
     src/hotkey_names.cpp
     src/builds/build_registry.cpp
     src/builds/steam_offsets.cpp
+    src/builds/gdk_offsets.cpp
 )
 
 add_library(WreckfestHeadTracking SHARED ${MOD_SOURCES})
@@ -117,7 +118,8 @@ if(WF_BUILD_TESTS)
     # what each state means for tracking does not. The build registry comes
     # along because InitGameState resolves its offsets from the active profile.
     wf_add_test(game_state src/game_state.cpp
-                src/builds/build_registry.cpp src/builds/steam_offsets.cpp)
+                src/builds/build_registry.cpp src/builds/steam_offsets.cpp
+                src/builds/gdk_offsets.cpp)
     target_link_libraries(wf_game_state_tests PRIVATE cameraunlock)
 
     # The one log line that reports which keys the config landed on. What a key
