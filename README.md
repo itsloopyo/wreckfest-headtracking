@@ -17,6 +17,13 @@ An unofficial head tracking mod for Wreckfest that moves the camera with your he
 
 ## Installation
 
+### Lopari
+
+Download [Lopari](https://lopari.app), choose **Wreckfest**, and click
+**Play with head tracking**.
+
+### Standalone Installer
+
 1. Download `WreckfestHeadTracking-v<version>-installer.zip` from the [releases page](https://github.com/itsloopyo/wreckfest-headtracking/releases).
 2. Extract it anywhere.
 3. Double-click `install.cmd`.
