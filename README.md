@@ -11,7 +11,7 @@ An unofficial head tracking mod for Wreckfest that moves the camera with your he
 
 ## Requirements
 
-- Wreckfest, either [on Steam](https://store.steampowered.com/app/228380/Wreckfest/) (the `Wreckfest_x64.exe` built 2023-09-19) or on [Xbox Game Pass for PC / the Microsoft Store](https://www.xbox.com/games/store/wreckfest/9ng06csmm97p) (package version 1.4.3.0). The two stores ship different builds and the mod carries a profile for each
+- Wreckfest, either [on Steam](https://store.steampowered.com/app/228380/Wreckfest/) (the `Wreckfest_x64.exe` built 2023-09-19) or on [Xbox Game Pass](https://www.xbox.com/games/store/wreckfest/9ng06csmm97p) (package version 1.4.3.0). The two stores ship different builds and the mod carries a profile for each
 - A tracking source that sends the OpenTrack UDP protocol, such as [OpenTrack](https://github.com/opentrack/opentrack) with a webcam
 - Windows 10 or 11, 64-bit
 
@@ -32,9 +32,9 @@ Download [Lopari](https://lopari.app), choose **Wreckfest**, and click
 
 The installer puts two files next to `Wreckfest_x64.exe`: `WreckfestHeadTracking.asi` (the mod) and `version.dll` (the bundled Ultimate ASI Loader, which the game already imports so the loader is picked up on start).
 
-Success looks like a `HeadTracking.ini` and a `HeadTracking.log` appearing in the game folder after the first launch, with the log reading `[build] activated profile ...` and a `[camera] hooked ViewManager::Update at ... and Camera::UpdateViewMatrix at ...` line. The profile it names is `steam-win64-20230919` on the Steam build and `gdk-win64-20210223` on the Game Pass one.
+Success looks like a `HeadTracking.ini` and a `HeadTracking.log` appearing in the game folder after the first launch, with the log reading `[build] activated profile ...` and a `[camera] hooked ViewManager::Update at ... and Camera::UpdateViewMatrix at ...` line. The profile it names is `steam-win64-20230919` on the Steam build and `gdk-win64-20210223` on the Xbox Game Pass one.
 
-If you own the game on both stores, `install.cmd` installs into whichever copy it finds first. Run it a second time with the other folder as an argument to cover both. The Game Pass copy lives under `<drive>\XboxGames\Wreckfest\Content`.
+If you own the game on both stores, `install.cmd` installs into whichever copy it finds first. Run it a second time with the other folder as an argument to cover both. The Xbox Game Pass copy lives under `<drive>\XboxGames\Wreckfest\Content`.
 
 If the installer cannot find your game, point it at the folder yourself, either with an environment variable:
 
@@ -156,7 +156,7 @@ The mod picks between the two smoothing values by where the packets came from, a
 
 ## Troubleshooting
 
-Read `HeadTracking.log`, next to `Wreckfest_x64.exe`. On Game Pass that folder is `<drive>\XboxGames\Wreckfest\Content`, whatever path the log's own `[boot] game directory` line prints. It records the game folder, the build profile it matched or refused, the config it loaded, the camera update it hooked, and the first head pose that reached the camera.
+Read `HeadTracking.log`, next to `Wreckfest_x64.exe`. On Xbox Game Pass that folder is `<drive>\XboxGames\Wreckfest\Content`, whatever path the log's own `[boot] game directory` line prints. It records the game folder, the build profile it matched or refused, the config it loaded, the camera update it hooked, and the first head pose that reached the camera.
 
 **Mod not loading:**
 
