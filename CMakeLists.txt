@@ -45,7 +45,6 @@ set(MOD_SOURCES
     src/camera_hook.cpp
     src/camera_transform.cpp
     src/game_state.cpp
-    src/hotkey_names.cpp
     src/builds/build_registry.cpp
     src/builds/steam_offsets.cpp
     src/builds/gdk_offsets.cpp
@@ -123,16 +122,12 @@ if(WF_BUILD_TESTS)
                 src/builds/gdk_offsets.cpp)
     target_link_libraries(wf_game_state_tests PRIVATE cameraunlock)
 
-    # The one log line that reports which keys the config landed on. What a key
-    # is called is the keyboard layout's business; that a name is always
-    # produced is this mod's.
-    wf_add_test(hotkey_names src/hotkey_names.cpp)
-
-    # Exercises the real INI generator and the frozen loader, so it needs the
-    # core's IniReader and the log sink both write their diagnostics to.
-    wf_add_test(config_defaults src/config.cpp src/legacy_config/legacy_config.cpp)
-    target_link_libraries(wf_config_defaults_tests PRIVATE cameraunlock)
-    target_compile_definitions(wf_config_defaults_tests PRIVATE
+    # The committed config against the table's fresh render, the fleet's
+    # default hotkeys, and the mode cycle's save. `wf_config_tests
+    # --render-config <path>` is pixi run render-config.
+    wf_add_test(config src/config.cpp src/legacy_config/legacy_config.cpp)
+    target_link_libraries(wf_config_tests PRIVATE cameraunlock)
+    target_compile_definitions(wf_config_tests PRIVATE
         WF_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
     # The hotkey half of the frozen loader: which INI values reach a binding and
@@ -149,11 +144,13 @@ if(WF_BUILD_TESTS)
     # The canonical config conversion's differential test: v0.1.0's reader and
     # startup code (the oracle, compiled from byte copies in
     # tests/config_differential/oracle) against the frozen reader in
-    # src/legacy_config/.
+    # src/legacy_config/, and that against the config owner's migration into
+    # CameraUnlock.ini.
     set(WF_DIFFERENTIAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/config_differential)
     add_executable(wf_config_differential
         ${WF_DIFFERENTIAL_DIR}/differential_tests.cpp
         ${WF_DIFFERENTIAL_DIR}/oracle/oracle_reader.cpp
+        src/config.cpp
         src/legacy_config/legacy_config.cpp
     )
     target_include_directories(wf_config_differential PRIVATE
@@ -171,6 +168,12 @@ if(WF_BUILD_TESTS)
     endif()
     add_test(NAME config_differential COMMAND wf_config_differential)
     set_property(GLOBAL APPEND PROPERTY WF_TEST_TARGETS wf_config_differential)
+    # Core's canonical config lint over the committed file and every file the
+    # differential test migrated, which it writes beside itself under migrated/.
+    add_test(NAME config_lint COMMAND node
+             ${WF_DIFFERENTIAL_DIR}/lint-migrated.mjs
+             $<TARGET_FILE_DIR:wf_config_differential>/migrated)
+    set_tests_properties(config_lint PROPERTIES DEPENDS config_differential)
 
     # What the differential test compiles is pinned by hash, line endings aside:
     # the oracle's byte copies must stay v0.1.0's (git show v0.1.0:src/<file>),

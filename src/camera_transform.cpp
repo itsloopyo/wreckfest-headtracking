@@ -80,9 +80,8 @@ void ApplyHeadPose(float transform[kCameraTransformFloats], const HeadPose& pose
     // against a running game on 2026-09-01, which is the only way a tracker
     // convention can be settled - the protocol never states one.
     //
-    // Negating here, at the engine boundary, is what keeps the shipped defaults
-    // correct and leaves the INI's Invert flags meaning "invert away from
-    // correct" rather than "correct the engine". It has to happen after the
+    // Negating here, at the engine boundary, is what makes the pose as the
+    // tracker sends it move the view the right way. It has to happen after the
     // processor's clamp, not before: the z limits are deliberately asymmetric
     // (0.40m of forward lean, 0.10m back), so negating any earlier would hand
     // the generous range to leaning backwards.

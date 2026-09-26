@@ -32,7 +32,7 @@ Download [Lopari](https://lopari.app), choose **Wreckfest**, and click
 
 The installer puts two files next to `Wreckfest_x64.exe`: `WreckfestHeadTracking.asi` (the mod) and `version.dll` (the bundled Ultimate ASI Loader, which the game already imports so the loader is picked up on start).
 
-Success looks like a `HeadTracking.ini` and a `HeadTracking.log` appearing in the game folder after the first launch, with the log reading `[build] activated profile ...` and a `[camera] hooked ViewManager::Update at ... and Camera::UpdateViewMatrix at ...` line. The profile it names is `steam-win64-20230919` on the Steam build and `gdk-win64-20210223` on the Xbox Game Pass one.
+Success looks like a `CameraUnlock.ini`, the mod's settings file, and a `HeadTracking.log` appearing in the game folder after the first launch, with the log reading `[build] activated profile ...` and a `[camera] hooked ViewManager::Update at ... and Camera::UpdateViewMatrix at ...` line. The profile it names is `steam-win64-20230919` on the Steam build and `gdk-win64-20210223` on the Xbox Game Pass one.
 
 If you own the game on both stores, `install.cmd` installs into whichever copy it finds first. Run it a second time with the other folder as an argument to cover both. The Xbox Game Pass copy lives under `<drive>\XboxGames\Wreckfest\Content`.
 
@@ -73,7 +73,7 @@ Set OpenTrack's **Input** to `Neuralnet tracker`. It tracks your face from a pla
 
 ### Phone App Setup
 
-Your app has to send the OpenTrack UDP protocol, either from the phone or through a companion program on the PC. Many phone trackers use something else, so check that first.
+The mod takes the OpenTrack UDP protocol and nothing else, so your app has to send that, either from the phone or through a companion program on the PC. Check your app's output settings for it first.
 
 There are two ways to wire it up:
 
@@ -91,9 +91,9 @@ I made [Headcam](https://headcam.app) so decent tracking was free for anybody wi
 | Toggle tracking     | `End`       | `Ctrl+Shift+Y` |
 | Cycle tracking mode | `Page Up`   | `Ctrl+Shift+G` |
 
-Both columns fire the same action, so use whichever your keyboard has. All four keys are remappable in `[Hotkeys]`.
+Both columns fire the same action, so use whichever your keyboard has. Each action's keys are one list in `[Hotkeys]` in `CameraUnlock.ini`, `ToggleKey` and `CycleTrackingModeKey`, the chord included, so any of them can be changed or removed.
 
-`Page Up` cycles three positions in order: rotation and position, then rotation only, then position only, then back.
+`Page Up` cycles three positions in order: rotation and position, then rotation only, then position only, then back. The mode you pick is saved to `CameraUnlock.ini`, and the game starts in it next time. `End` / `Ctrl+Shift+Y` changes the current session only; whether tracking is on when the game starts is `EnableOnStartup`.
 
 Your head turns the view about the camera's own up axis, so it stays glued to the car through a bank, a barrel roll or a landing on the roof.
 
@@ -101,56 +101,106 @@ Centering is done in the tracker: OpenTrack's Center bind, the center button in 
 
 ## Configuration
 
-`HeadTracking.ini` is written to the game folder, next to `Wreckfest_x64.exe`, on first run and read at startup. Edit it and restart the game.
+<!-- cameraunlock:config -->
+The mod reads its settings from `CameraUnlock.ini` in the game folder, and creates the file when it starts and finds none. Edit it with any text editor.
+
+A setting set to `default` takes its value from `Defaults.ini`, which every head tracking mod that keeps its settings in `CameraUnlock.ini` reads. Head tracking mods that keep their settings in another file do not read it, and neither do earlier versions of this mod. Writing a value in place of `default` changes that setting for this game only. When the mod saves a setting that a hotkey changed in game, it writes the new value in place of `default`, so that setting no longer follows `Defaults.ini` in this game until you set it to `default` again.
+
+`Defaults.ini` is `%AppData%\CameraUnlock\Defaults.ini` on Windows; `$XDG_CONFIG_HOME/CameraUnlock/Defaults.ini` on Linux, or `~/.config/CameraUnlock/Defaults.ini` where `XDG_CONFIG_HOME` is not set, under Wine and Proton too; and `~/Library/Application Support/CameraUnlock/Defaults.ini` on macOS. The mod's log, where it writes one, names the file it read.
+
+When the mod starts and finds no `Defaults.ini`, it creates one holding the built-in values, unless Windows runs the game as a packaged app. The mod never changes `Defaults.ini` after that. Edit it with any text editor.
+
+Earlier versions of the mod kept these settings in `HeadTracking.ini`, in the same folder. The first time this version starts and finds no `CameraUnlock.ini`, it reads your settings from `HeadTracking.ini` and writes them into `CameraUnlock.ini`. It never changes `HeadTracking.ini`, and does not read it again while `CameraUnlock.ini` exists.
+
+A setting that the defaults below set to `default` is written as `default` when the value imported for it equals its default at that start, which is the value `Defaults.ini` gives it, or the built-in value where `Defaults.ini` gives none. It then follows `Defaults.ini`. Every other setting is written with the value imported for it. `RotationEnabled` and `PositionEnabled` are one setting here, the tracking mode, so both are written as `default` or neither is.
+
+Comments, and keys the mod never read, are not carried over. Nor are these, where your old file had them:
+
+- Reticle settings, and a key that toggled the reticle.
+- A sensitivity, scale, deadzone, response curve or axis inversion you changed from its default. Set these in your tracker instead.
+- The setting for a feature that earlier versions shipped switched off while it was untested. It now follows the mod's default.
+
+An older version of the mod reads `HeadTracking.ini` and never reads `CameraUnlock.ini`, so a setting you change after updating is not in `HeadTracking.ini`.
+
+Deleting only `CameraUnlock.ini` makes the next start read `HeadTracking.ini` again. To go back to the defaults, replace everything in `CameraUnlock.ini` with the defaults below. Every setting they set to `default` then follows `Defaults.ini`.
+
+The built-in value of each setting set to `default` below:
+
+- `UdpPort=4242`
+- `EnableOnStartup=true`
+- `RotationEnabled=true`
+- `LocalSmoothing=0.0`
+- `RemoteSmoothing=0.15`
+- `PositionEnabled=true`
+- `PositionLimitX=0.3`
+- `PositionLimitY=0.2`
+- `PositionLimitYDown=0.2`
+- `PositionLimitZ=0.4`
+- `PositionLimitZBack=0.1`
+- `ToggleKey=End, Ctrl+Shift+Y`
+- `CycleTrackingModeKey=PageUp, Ctrl+Shift+G`
+
+With every setting at its default, the file reads:
 
 ```ini
+; Wreckfest head tracking settings.
+; Comments start with ; and go on their own line. Text after a value is part of the value.
+; Hotkeys are key names such as End, PageUp or Ctrl+Shift+Y. Separate several with commas; leave empty for none.
+; A setting set to default takes its value from Defaults.ini, which every head tracking mod
+; that keeps its settings in CameraUnlock.ini reads: %AppData%\CameraUnlock\Defaults.ini on
+; Windows, $XDG_CONFIG_HOME/CameraUnlock/Defaults.ini (normally ~/.config/CameraUnlock) on
+; Linux, under Wine and Proton too, and ~/Library/Application Support/CameraUnlock/Defaults.ini
+; on macOS. The log names the file it read. Write a value instead of default to change that
+; setting for this game only.
+
+[CameraUnlock]
+; Written by the mod. Leave this section in place.
+ConfigFormat=1
+
 [Network]
-; Port the mod listens on, 1024 to 65535. Must match the tracker's output port.
-UdpPort=4242
+; UDP port the mod receives tracker data on (OpenTrack protocol).
+UdpPort=default
 
 [General]
-; Whether tracking is on when the game starts.
-EnableOnStartup=1
+; true: head tracking is on when the game starts. ToggleKey turns it on and off.
+EnableOnStartup=default
+; true: turning your head turns the view.
+; Tracking mode at startup, with PositionEnabled. The mode hotkey changes both.
+RotationEnabled=default
 
-[Hotkeys]
-; Windows virtual key codes, in hex. A value the mod cannot bind leaves that
-; action on its previous key and says so in the log.
-ToggleKey=0x23
-CycleModeKey=0x21
-ChordToggleKey=0x59
-ChordCycleModeKey=0x47
-
-[Rotation]
-; Sensitivities multiply the tracker's angles; the inverts flip an axis.
-YawSensitivity=1.0
-PitchSensitivity=1.0
-RollSensitivity=1.0
-InvertYaw=0
-InvertPitch=0
-InvertRoll=0
-; Smoothing runs 0.0 (none) to 1.0 (heavy) and covers rotation and position
-; alike. Which of the two applies is picked per connection from where the
-; tracker sends from: loopback gets LocalSmoothing, anything else gets
-; RemoteSmoothing.
-LocalSmoothing=0.0
-RemoteSmoothing=0.15
+[Smoothing]
+; Smoothing when the tracker runs on this PC. 0 is the least, 1 the most.
+LocalSmoothing=default
+; Smoothing when the tracker is another device on the network, such as a phone.
+; 0 is the least, 1 the most.
+RemoteSmoothing=default
 
 [Position]
-Enabled=1
-SensitivityX=1.0
-SensitivityY=1.0
-SensitivityZ=1.0
-InvertX=0
-InvertY=0
-InvertZ=0
-; Limits are metres, and cap how far the camera moves from where the game put
-; it. Forward and backward Z differ on purpose, so leaning in has more range
-; than pulling back.
-LimitX=0.30
-LimitY=0.20
-LimitZ=0.40
-LimitZBack=0.10
+; true: moving your head moves the view.
+; Tracking mode at startup, with RotationEnabled. The mode hotkey changes both.
+PositionEnabled=default
+; How far, in metres, leaning left or right can move the view.
+PositionLimitX=default
+; How far, in metres, raising your head can move the view.
+PositionLimitY=default
+; How far, in metres, lowering your head can move the view.
+PositionLimitYDown=default
+; How far, in metres, leaning forward can move the view.
+PositionLimitZ=default
+; How far, in metres, leaning back can move the view.
+PositionLimitZBack=default
+
+[Hotkeys]
+; Turns head tracking on and off.
+ToggleKey=default
+; Changes the tracking mode: rotation and position, rotation only, position only.
+CycleTrackingModeKey=default
 ```
+<!-- /cameraunlock:config -->
+
+Changes take effect the next time the game starts.
+
+Hotkeys are written as key names, such as `End`, `PageUp`, `F9` or `Ctrl+Shift+Y`, separated by commas. A key with no name can be written as its Windows virtual key code, `0x` and two hex digits, such as `0xBA`. A value the mod cannot read leaves that setting at its default and is named in `HeadTracking.log`.
 
 The mod picks between the two smoothing values by where the packets came from, and it goes by address rather than by machine. Only `127.0.0.1` counts as local. A phone on your WiFi gets `RemoteSmoothing`, which is what you want, but so does OpenTrack running on this same PC if you have pointed it at your PC's own network address. Send to `127.0.0.1` to get `LocalSmoothing`.
 
@@ -172,22 +222,22 @@ Read `HeadTracking.log`, next to `Wreckfest_x64.exe`. On Xbox Game Pass that fol
 
 **Jittery or unstable tracking:**
 
-- Raise `RemoteSmoothing` if the tracker is on another device, or `LocalSmoothing` if it is on this PC. Both are frame-rate independent.
+- Raise `RemoteSmoothing` if the tracker is on another device, or `LocalSmoothing` if it is on this PC, both in `[Smoothing]` in `CameraUnlock.ini`. Both are frame-rate independent.
 - If a phone app is sending direct, route it through OpenTrack so its filters can clean up the feed.
 
 **Wrong rotation axis:**
 
-- Per-axis inversion lives in `[Rotation]`, but fix a mirrored axis in your tracker's profile first so every game behaves the same way.
+- The mod applies the pose as your tracker sends it. If an axis moves the wrong way, invert that axis in your tracker's settings.
 
-**Edits to `HeadTracking.ini` do nothing:** the file is read once at startup, so restart the game. If a single value is being ignored, the log names it and says what it used instead.
+**Edits to `CameraUnlock.ini` do nothing:** the file is read once at startup, so restart the game. If a single value is being ignored, the log names it. Once `CameraUnlock.ini` exists the mod no longer reads `HeadTracking.ini`, so an edit there changes nothing.
 
 ## Updating
 
-Download the new release and run `install.cmd` again. Your `HeadTracking.ini` is preserved.
+Download the new release and run `install.cmd` again. Your `CameraUnlock.ini` is kept. Updating from v0.1.0, the first start reads your settings from `HeadTracking.ini` into a new `CameraUnlock.ini`; see [Configuration](#configuration).
 
 ## Uninstalling
 
-Run `uninstall.cmd`. This removes the mod DLLs. The Ultimate ASI Loader is only removed if the installer put it there. Use `uninstall.cmd /force` to remove it anyway. Your `HeadTracking.ini` is left alone either way.
+Run `uninstall.cmd`. This removes the mod DLLs. The Ultimate ASI Loader is only removed if the installer put it there. Use `uninstall.cmd /force` to remove it anyway. `CameraUnlock.ini` and `HeadTracking.ini` are left in place either way, so your settings are still there if you install again.
 
 ## Building from Source
 
