@@ -11,6 +11,7 @@
 // real loader.
 
 #include "config.h"
+#include "legacy_config/legacy_config.h"
 
 #include "test_support.h"
 
@@ -44,9 +45,10 @@ void RemoveTempDir(const std::string& dir) {
     RemoveDirectoryA(dir.c_str());
 }
 
-// Every field of Config, compared against a default-constructed one. Loading a
-// file that says exactly what the defaults say must leave the struct untouched.
-void CheckMatchesDefaults(const Config& cfg, const char* source) {
+// Every field the frozen reader filled, compared against a default-constructed
+// runtime Config. Loading a file that says exactly what the defaults say must
+// leave the struct at the shipped defaults.
+void CheckMatchesDefaults(const legacy::Config& cfg, const char* source) {
     const Config defaults;
     std::printf("%s\n", source);
 
@@ -94,7 +96,7 @@ void GeneratedDefaultsTests() {
     // Deliberately not a default Config: if a key were missing from the
     // generated file the loader would leave these poisoned values in place and
     // the comparison below would catch it.
-    Config cfg;
+    legacy::Config cfg;
     cfg.udp_port = 5555;
     cfg.enable_on_startup = false;
     cfg.yaw_sensitivity = cfg.pitch_sensitivity = cfg.roll_sensitivity = 9.0f;
@@ -106,7 +108,7 @@ void GeneratedDefaultsTests() {
     cfg.invert_position_x = cfg.invert_position_y = cfg.invert_position_z = true;
     cfg.limit_x = cfg.limit_y = cfg.limit_z = cfg.limit_z_back = 9.0f;
 
-    LoadConfig(dir, cfg);
+    legacy::LoadConfig(path, cfg);
     CheckMatchesDefaults(cfg, "The generated file loads back as the built-in defaults");
 
     // A second call must not clobber a file the user has since edited.
@@ -118,8 +120,8 @@ void GeneratedDefaultsTests() {
         std::fclose(f);
     }
     WriteDefaultConfigIfMissing(dir);
-    Config edited;
-    LoadConfig(dir, edited);
+    legacy::Config edited;
+    legacy::LoadConfig(path, edited);
     Check(edited.udp_port == 5000, "an existing HeadTracking.ini is never overwritten");
 
     RemoveTempDir(dir);
@@ -128,14 +130,20 @@ void GeneratedDefaultsTests() {
 void ReferenceIniTests() {
     // WF_SOURCE_DIR is the repo root, where the reference HeadTracking.ini
     // that ships as documentation lives.
-    Config cfg;
+    legacy::Config cfg;
     cfg.udp_port = 5555;
     cfg.local_smoothing = 0.99f;
     cfg.remote_smoothing = 0.99f;
     cfg.limit_x = 9.0f;
 
-    LoadConfig(WF_SOURCE_DIR, cfg);
+    legacy::LoadConfig(std::string(WF_SOURCE_DIR) + "/HeadTracking.ini", cfg);
     CheckMatchesDefaults(cfg, "The reference HeadTracking.ini at the repo root");
+}
+
+void FrozenDefaultsTests() {
+    // The frozen reader starts from its own copy of the defaults, so a file
+    // with no keys at all has to mean what it meant to the runtime Config.
+    CheckMatchesDefaults(legacy::Config{}, "The frozen reader's defaults");
 }
 
 }  // namespace
@@ -145,5 +153,6 @@ int main() {
     std::printf("=====================================================\n");
     GeneratedDefaultsTests();
     ReferenceIniTests();
+    FrozenDefaultsTests();
     return wf_test::Summary("config defaults");
 }

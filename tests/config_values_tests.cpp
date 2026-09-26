@@ -19,7 +19,7 @@
 // The other half of this file is the regression risk the fix carries: the
 // detector must not cry wolf on values that are perfectly legitimate.
 
-#include "config.h"
+#include "legacy_config/legacy_config.h"
 #include "logging.h"
 
 #include "test_support.h"
@@ -30,7 +30,8 @@
 #include <share.h>
 #include <string>
 
-using namespace wf_ht;
+using namespace wf_ht::legacy;
+namespace Log = wf_ht::Log;
 using wf_test::Check;
 using wf_test::CheckClose;
 
@@ -121,7 +122,7 @@ Load LoadIni(const char* body) {
     std::fclose(f);
 
     Load result;
-    LoadConfig(g_dir, result.config);
+    LoadConfig(IniPath(), result.config);
     result.log = ReadWholeLog().substr(logBefore);
     return result;
 }
