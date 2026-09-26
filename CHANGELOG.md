@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [Unreleased]
 
 - The Xbox Game Pass / Microsoft Store copy of the game is supported. It is a
   different build from the Steam one - older, and with all its own addresses -
@@ -10,6 +10,9 @@
 - `pixi run install`, `pixi run uninstall` and `pixi run check-fingerprint` act
   on every Wreckfest install on the machine rather than the first one detection
   returns, so a Steam and a Game Pass copy side by side stay in step.
+
+## [0.1.0] - 2026-09-03
+
 - Head tracking now reaches the rendered frame. The pinned camera function was
   the view matrix history push, not the camera update, so the head pose lived
   only for the duration of that call and reached nothing but the frame's motion
