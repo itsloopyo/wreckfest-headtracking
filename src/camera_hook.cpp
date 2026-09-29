@@ -27,9 +27,6 @@ using ViewMatrixFn = void(__fastcall*)(void*);
 ViewManagerUpdateFn g_original_view_manager_update = nullptr;
 ViewMatrixFn g_original_view_matrix = nullptr;
 
-void* g_view_manager_update_target = nullptr;
-void* g_view_matrix_target = nullptr;
-
 // Read once at install time rather than per frame: the active profile cannot
 // change while the hooks are installed, and both sit on the render path.
 unsigned g_world_transform_offset = 0;
@@ -105,12 +102,10 @@ bool Install(void* target, void* detour, void** original, const char* what) {
     return true;
 }
 
-void Remove(void*& target) {
-    if (target == nullptr) return;
+void Remove(void* target) {
     cameraunlock::hooks::HookManager& hooks = cameraunlock::hooks::HookManager::Instance();
     hooks.DisableHook(target);
     hooks.RemoveHook(target);
-    target = nullptr;
 }
 
 }  // namespace
@@ -155,19 +150,11 @@ bool InstallCameraHook() {
         return false;
     }
 
-    g_view_manager_update_target = view_manager_update;
-    g_view_matrix_target = view_matrix;
     Log::Line("[camera] hooked ViewManager::Update at 0x%p and Camera::UpdateViewMatrix at "
               "0x%p (profile %s, transform +0x%X, render camera +0x%X)",
               view_manager_update, view_matrix, profile.Name, g_world_transform_offset,
               g_current_camera_offset);
     return true;
-}
-
-void UninstallCameraHook() {
-    Remove(g_view_matrix_target);
-    Remove(g_view_manager_update_target);
-    g_injected_camera = nullptr;
 }
 
 }  // namespace wf_ht

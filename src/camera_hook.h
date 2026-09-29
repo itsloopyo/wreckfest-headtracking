@@ -21,6 +21,4 @@ namespace wf_ht {
 // patched in either case.
 bool InstallCameraHook();
 
-void UninstallCameraHook();
-
 }  // namespace wf_ht

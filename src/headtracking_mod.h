@@ -6,7 +6,6 @@
 namespace wf_ht {
 
 void Initialize();
-void Shutdown();
 
 // Called from the camera detour with the engine's camera-to-world transform,
 // immediately before the engine derives this frame's view matrix from it.

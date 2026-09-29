@@ -22,6 +22,7 @@
 #include "logging.h"
 
 #include "cameraunlock/config/defaults_file.h"
+#include "cameraunlock/input/deferred_actions.h"
 #include "cameraunlock/input/hotkey_poller.h"
 #include "cameraunlock/input/key_binding_registration.h"
 #include "cameraunlock/input/key_bindings.h"
@@ -52,10 +53,19 @@ std::atomic<bool> g_active{false};
 
 std::atomic<long long> g_frame_counter{0};
 
+// A mode change resets the session's position interpolator and smoothing, which
+// the render thread is reading inside Update(), so the hotkey only records the
+// mode and the render thread applies it. The next mode is computed from the one
+// last applied, so two presses inside one frame move one step.
+cameraunlock::input::DeferredAction g_mode_change;
+std::atomic<cameraunlock::TrackingMode> g_applied_mode{cameraunlock::TrackingMode::RotationAndPosition};
+std::atomic<cameraunlock::TrackingMode> g_desired_mode{cameraunlock::TrackingMode::RotationAndPosition};
+
 // Whether this module is pinned against unloading - see PinModule. Recorded at
-// load and reported from the bootstrap, which is the first point there is a log
+// load and checked by the bootstrap, which is the first point there is a log
 // to report it into.
 std::atomic<bool> g_pinned{false};
+std::atomic<unsigned long> g_pin_error{0};
 
 // Enough of the engine's camera transform to confirm in a bug report that the
 // hook fires and that the matrix still looks like a camera-to-world transform
@@ -84,7 +94,9 @@ void ApplyConfigToPipeline(const Config& config, Session& session) {
 
     session.SetPositionSettings(config::ToPositionSettings(config));
 
-    session.SetMode(config::StartupTrackingMode(config));
+    const cameraunlock::TrackingMode mode = config::StartupTrackingMode(config);
+    session.SetMode(mode);
+    g_applied_mode.store(mode);
 }
 
 // ---------------------------------------------------------------------------
@@ -204,12 +216,32 @@ const char* ModeName(cameraunlock::TrackingMode mode) {
     throw std::logic_error("TrackingMode outside its three modes");
 }
 
-// Runs on the hotkey poller's thread: the session takes the new mode first, then
-// CameraUnlock.ini saves it, so the next start begins in it.
+cameraunlock::TrackingMode NextTrackingMode(cameraunlock::TrackingMode mode) {
+    using cameraunlock::TrackingMode;
+    switch (mode) {
+        case TrackingMode::RotationAndPosition: return TrackingMode::RotationOnly;
+        case TrackingMode::RotationOnly:        return TrackingMode::PositionOnly;
+        case TrackingMode::PositionOnly:        return TrackingMode::RotationAndPosition;
+    }
+    throw std::logic_error("TrackingMode outside its three modes");
+}
+
+// Runs on the hotkey poller's thread. The render thread applies the mode on its
+// next camera update, and CameraUnlock.ini saves it here, off the render path,
+// so the next start begins in it.
 void CycleTrackingMode() {
-    const cameraunlock::TrackingMode mode = g_session.CycleMode();
+    const cameraunlock::TrackingMode mode = NextTrackingMode(g_applied_mode.load());
+    g_desired_mode.store(mode);
+    g_mode_change.Request();
     Log::Line("[input] tracking mode: %s", ModeName(mode));
     config::SaveTrackingMode(mode);
+}
+
+void ApplyRequestedTrackingMode() {
+    if (!g_mode_change.Consume()) return;
+    const cameraunlock::TrackingMode mode = g_desired_mode.load();
+    g_session.SetMode(mode);
+    g_applied_mode.store(mode);
 }
 
 // The table's hotkey codec lets only a list ParseKeyBindings reads into the
@@ -285,19 +317,21 @@ void StartReceiver() {
 // Three things outlive such a call: the detached bootstrap thread, the hotkey
 // and receiver threads, and - the one that is fatal - an inline detour sitting
 // in the game's camera update, which a thread can be executing at the moment
-// the pages go away. Shutdown() exists to undo all of that, but it runs from
-// DllMain under the loader lock, where joining a thread deadlocks, so it cannot
-// be made to work from there either. Refusing the unload removes both problems;
-// the process exiting still reclaims everything.
+// the pages go away. No teardown can undo that from DllMain: it runs under the
+// loader lock, where joining a thread deadlocks. So a module that could not be
+// pinned stays dormant, and one that was pinned is never unloaded; the process
+// exiting reclaims everything.
 //
 // The address handed in has to be one inside this module, hence a function of
 // our own rather than anything the caller passes.
 bool PinModule() {
     HMODULE self = nullptr;
-    return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
-                                  | GET_MODULE_HANDLE_EX_FLAG_PIN,
-                              reinterpret_cast<LPCWSTR>(&ApplyConfigToPipeline),
-                              &self) != FALSE;
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                           reinterpret_cast<LPCWSTR>(&ApplyConfigToPipeline), &self)) {
+        return true;
+    }
+    g_pin_error.store(GetLastError());
+    return false;
 }
 
 void Bootstrap() {
@@ -306,9 +340,10 @@ void Bootstrap() {
     if (!OpenLogAndResolveGameDirectory(exe_dir_wide, exe_dir)) return;
 
     if (!g_pinned.load()) {
-        Log::Line("[boot] WARNING: this module could not be pinned against unloading. "
-                  "If something calls FreeLibrary on it while the game is running, the "
-                  "camera hook is left pointing at unmapped memory.");
+        Log::Line("[boot] this module could not be pinned against unloading (error %lu), so "
+                  "an unload would leave the camera hook pointing at unmapped memory - mod "
+                  "is dormant, game runs vanilla.", g_pin_error.load());
+        return;
     }
 
     if (builds::SelectProfile(GetModuleHandleW(nullptr)) != builds::ProfileSelection::Matched) {
@@ -334,7 +369,7 @@ void Bootstrap() {
     }
 
     RegisterHotkeys(g_config);
-    g_active.store(true);
+    g_active.store(true, std::memory_order_release);
     Log::Line("[boot] ready. %s toggle tracking, %s cycle tracking mode.",
               g_config.toggle_key.c_str(), g_config.cycle_tracking_mode_key.c_str());
 }
@@ -342,12 +377,12 @@ void Bootstrap() {
 }  // namespace
 
 bool ApplyTrackingToCameraTransform(float* transform) {
-    if (!g_active.load(std::memory_order_relaxed)) return false;
+    // Acquire, so everything the bootstrap thread set up before raising the
+    // flag - the session, the config, the receiver - is visible here.
+    if (!g_active.load(std::memory_order_acquire)) return false;
 
-    // Several cameras can update in the same frame. Splitting a frame's delta
-    // across those calls is harmless: the smoothing and interpolation are both
-    // exponential in dt, so the total advance per frame is the same whether it
-    // arrives in one step or several.
+    ApplyRequestedTrackingMode();
+
     const float dt = g_frame_clock.Tick();
 
     // The pipeline advances whatever the gate says. Freezing it in the garage
@@ -388,15 +423,6 @@ void Initialize() {
     // Detached: DllMain runs under the loader lock, so the bootstrap (which
     // opens a log, reads the config and resolves engine statics) cannot run here.
     std::thread(Bootstrap).detach();
-}
-
-void Shutdown() {
-    g_active.store(false);
-    UninstallCameraHook();
-    g_hotkeys.Stop();
-    g_receiver.Stop();
-    Log::Line("[boot] shutdown");
-    Log::Close();
 }
 
 }  // namespace wf_ht
